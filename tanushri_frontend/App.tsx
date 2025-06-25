@@ -1,9 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { TrendingUp, TrendingDown, Play, MapPin, Search, Plus, Minus, Settings, Download } from 'lucide-react';
+import USHeatmap from './components/USHeatmap';
+
+// --- NEW INTERFACES FOR MOCK DATA ---
+interface TrendDataItem {
+  date: string;
+  // This index signature allows accessing properties like obj['keyword']
+  [key: string]: number | string;
+}
+
+interface InterestByKeyword {
+  // This index signature allows accessing properties like obj['almond milk']
+  [key: string]: number;
+}
+
+interface GeoDataItem {
+  state: string;
+  state_code: string;
+  interestByKeyword: InterestByKeyword;
+}
+// --- END NEW INTERFACES ---
+
 
 // Mock data for demonstration
-const mockTrendData = [
+const mockTrendData: TrendDataItem[] = [ // Apply the new type here
   { date: '2024-01-01', 'almond milk': 65, 'oat milk': 78, 'soy milk': 45 },
   { date: '2024-01-08', 'almond milk': 70, 'oat milk': 82, 'soy milk': 48 },
   { date: '2024-01-15', 'almond milk': 68, 'oat milk': 85, 'soy milk': 46 },
@@ -12,27 +33,55 @@ const mockTrendData = [
   { date: '2024-02-05', 'almond milk': 78, 'oat milk': 92, 'soy milk': 55 },
 ];
 
-const mockGeoData = [
-  { state: 'California', state_code: 'CA', interest: 100 },
-  { state: 'Washington', state_code: 'WA', interest: 85 },
-  { state: 'Oregon', state_code: 'OR', interest: 82 },
-  { state: 'New York', state_code: 'NY', interest: 78 },
-  { state: 'Massachusetts', state_code: 'MA', interest: 75 },
-  { state: 'Colorado', state_code: 'CO', interest: 72 },
-  { state: 'Vermont', state_code: 'VT', interest: 70 },
-  { state: 'Connecticut', state_code: 'CT', interest: 68 },
-  { state: 'Hawaii', state_code: 'HI', interest: 65 },
-  { state: 'Florida', state_code: 'FL', interest: 62 },
-  { state: 'Illinois', state_code: 'IL', interest: 60 },
-  { state: 'Minnesota', state_code: 'MN', interest: 58 },
-  { state: 'Georgia', state_code: 'GA', interest: 55 },
-  { state: 'Texas', state_code: 'TX', interest: 52 },
-  { state: 'North Carolina', state_code: 'NC', interest: 50 },
-  { state: 'Virginia', state_code: 'VA', interest: 48 },
-  { state: 'Pennsylvania', state_code: 'PA', interest: 45 },
-  { state: 'Ohio', state_code: 'OH', interest: 42 },
-  { state: 'Michigan', state_code: 'MI', interest: 40 },
-  { state: 'Arizona', state_code: 'AZ', interest: 38 },
+const mockGeoData: GeoDataItem[] = [ // Apply the new type here
+  { state: 'California', state_code: 'CA', interestByKeyword: { 'almond milk': 100, 'oat milk': 80, 'soy milk': 60 } },
+  { state: 'Washington', state_code: 'WA', interestByKeyword: { 'almond milk': 85, 'oat milk': 95, 'soy milk': 50 } },
+  { state: 'Oregon', state_code: 'OR', interestByKeyword: { 'almond milk': 82, 'oat milk': 90, 'soy milk': 45 } },
+  { state: 'New York', state_code: 'NY', interestByKeyword: { 'almond milk': 78, 'oat milk': 70, 'soy milk': 85 } },
+  { state: 'Massachusetts', state_code: 'MA', interestByKeyword: { 'almond milk': 75, 'oat milk': 65, 'soy milk': 70 } },
+  { state: 'Colorado', state_code: 'CO', interestByKeyword: { 'almond milk': 72, 'oat milk': 88, 'soy milk': 55 } },
+  { state: 'Vermont', state_code: 'VT', interestByKeyword: { 'almond milk': 70, 'oat milk': 60, 'soy milk': 75 } },
+  { state: 'Connecticut', state_code: 'CT', interestByKeyword: { 'almond milk': 68, 'oat milk': 55, 'soy milk': 68 } },
+  { state: 'Hawaii', state_code: 'HI', interestByKeyword: { 'almond milk': 65, 'oat milk': 72, 'soy milk': 40 } },
+  { state: 'Florida', state_code: 'FL', interestByKeyword: { 'almond milk': 62, 'oat milk': 50, 'soy milk': 62 } },
+  { state: 'Illinois', state_code: 'IL', interestByKeyword: { 'almond milk': 60, 'oat milk': 80, 'soy milk': 58 } },
+  { state: 'Minnesota', state_code: 'MN', interestByKeyword: { 'almond milk': 58, 'oat milk': 85, 'soy milk': 48 } },
+  { state: 'Georgia', state_code: 'GA', interestByKeyword: { 'almond milk': 55, 'oat milk': 70, 'soy milk': 65 } },
+  { state: 'Texas', state_code: 'TX', interestByKeyword: { 'almond milk': 52, 'oat milk': 75, 'soy milk': 52 } },
+  { state: 'North Carolina', state_code: 'NC', interestByKeyword: { 'almond milk': 50, 'oat milk': 60, 'soy milk': 50 } },
+  { state: 'Virginia', state_code: 'VA', interestByKeyword: { 'almond milk': 48, 'oat milk': 55, 'soy milk': 48 } },
+  { state: 'Pennsylvania', state_code: 'PA', interestByKeyword: { 'almond milk': 45, 'oat milk': 50, 'soy milk': 45 } },
+  { state: 'Ohio', state_code: 'OH', interestByKeyword: { 'almond milk': 42, 'oat milk': 48, 'soy milk': 42 } },
+  { state: 'Michigan', state_code: 'MI', interestByKeyword: { 'almond milk': 40, 'oat milk': 45, 'soy milk': 40 } },
+  { state: 'Arizona', state_code: 'AZ', interestByKeyword: { 'almond milk': 38, 'oat milk': 40, 'soy milk': 38 } },
+  { state: 'Alabama', state_code: 'AL', interestByKeyword: { 'almond milk': 30, 'oat milk': 35, 'soy milk': 30 } },
+  { state: 'Arkansas', state_code: 'AR', interestByKeyword: { 'almond milk': 32, 'oat milk': 38, 'soy milk': 32 } },
+  { state: 'Delaware', state_code: 'DE', interestByKeyword: { 'almond milk': 65, 'oat milk': 70, 'soy milk': 60 } },
+  { state: 'Idaho', state_code: 'ID', interestByKeyword: { 'almond milk': 50, 'oat milk': 55, 'soy milk': 45 } },
+  { state: 'Indiana', state_code: 'IN', interestByKeyword: { 'almond milk': 48, 'oat milk': 52, 'soy milk': 40 } },
+  { state: 'Kansas', state_code: 'KS', interestByKeyword: { 'almond milk': 35, 'oat milk': 40, 'soy milk': 30 } },
+  { state: 'Kentucky', state_code: 'KY', interestByKeyword: { 'almond milk': 40, 'oat milk': 45, 'soy milk': 35 } },
+  { state: 'Louisiana', state_code: 'LA', interestByKeyword: { 'almond milk': 42, 'oat milk': 48, 'soy milk': 38 } },
+  { state: 'Maine', state_code: 'ME', interestByKeyword: { 'almond milk': 70, 'oat milk': 75, 'soy milk': 65 } },
+  { state: 'Maryland', state_code: 'MD', interestByKeyword: { 'almond milk': 72, 'oat milk': 78, 'soy milk': 68 } },
+  { state: 'Mississippi', state_code: 'MS', interestByKeyword: { 'almond milk': 30, 'oat milk': 35, 'soy milk': 28 } },
+  { state: 'Missouri', state_code: 'MO', interestByKeyword: { 'almond milk': 45, 'oat milk': 50, 'soy milk': 40 } },
+  { state: 'Montana', state_code: 'MT', interestByKeyword: { 'almond milk': 55, 'oat milk': 60, 'soy milk': 50 } },
+  { state: 'Nebraska', state_code: 'NE', interestByKeyword: { 'almond milk': 38, 'oat milk': 42, 'soy milk': 32 } },
+  { state: 'Nevada', state_code: 'NV', interestByKeyword: { 'almond milk': 60, 'oat milk': 65, 'soy milk': 55 } },
+  { state: 'New Hampshire', state_code: 'NH', interestByKeyword: { 'almond milk': 75, 'oat milk': 80, 'soy milk': 70 } },
+  { state: 'New Jersey', state_code: 'NJ', interestByKeyword: { 'almond milk': 80, 'oat milk': 85, 'soy milk': 75 } },
+  { state: 'New Mexico', state_code: 'NM', interestByKeyword: { 'almond milk': 40, 'oat milk': 45, 'soy milk': 35 } },
+  { state: 'North Dakota', state_code: 'ND', interestByKeyword: { 'almond milk': 30, 'oat milk': 35, 'soy milk': 25 } },
+  { state: 'Oklahoma', state_code: 'OK', interestByKeyword: { 'almond milk': 40, 'oat milk': 45, 'soy milk': 35 } },
+  { state: 'Rhode Island', state_code: 'RI', interestByKeyword: { 'almond milk': 70, 'oat milk': 75, 'soy milk': 68 } },
+  { state: 'South Carolina', state_code: 'SC', interestByKeyword: { 'almond milk': 50, 'oat milk': 55, 'soy milk': 45 } },
+  { state: 'South Dakota', state_code: 'SD', interestByKeyword: { 'almond milk': 32, 'oat milk': 38, 'soy milk': 28 } },
+  { state: 'Tennessee', state_code: 'TN', interestByKeyword: { 'almond milk': 45, 'oat milk': 50, 'soy milk': 40 } },
+  { state: 'Utah', state_code: 'UT', interestByKeyword: { 'almond milk': 60, 'oat milk': 65, 'soy milk': 55 } },
+  { state: 'West Virginia', state_code: 'WV', interestByKeyword: { 'almond milk': 35, 'oat milk': 40, 'soy milk': 30 } },
+  { state: 'Wisconsin', state_code: 'WI', interestByKeyword: { 'almond milk': 50, 'oat milk': 55, 'soy milk': 45 } },
+  { state: 'Wyoming', state_code: 'WY', interestByKeyword: { 'almond milk': 30, 'oat milk': 35, 'soy milk': 25 } }
 ];
 
 const mockRelatedQueries = {
@@ -69,6 +118,27 @@ const Dashboard = () => {
   const [newKeyword, setNewKeyword] = useState('');
   const [selectedGroup, setSelectedGroup] = useState(1);
 
+  // Get all unique keywords from all groups
+  const getAllKeywords = () => {
+    const all = keywordGroups.flatMap(group => group.keywords);
+    return Array.from(new Set(all)); // Ensure unique keywords
+  };
+
+  const allKeywords = getAllKeywords(); // Call it once and store
+
+  // State for the selected keyword for the heatmap
+  const [selectedHeatmapKeyword, setSelectedHeatmapKeyword] = useState<string>(allKeywords[0] || '');
+
+  // Effect to update selectedHeatmapKeyword if keywords change or initial load
+  useEffect(() => {
+    if (allKeywords.length > 0 && !allKeywords.includes(selectedHeatmapKeyword)) {
+      setSelectedHeatmapKeyword(allKeywords[0]);
+    } else if (allKeywords.length === 0) {
+      setSelectedHeatmapKeyword('');
+    }
+  }, [allKeywords, selectedHeatmapKeyword]);
+
+
   const addKeyword = () => {
     if (newKeyword.trim()) {
       setKeywordGroups(prev => prev.map(group => 
@@ -88,19 +158,21 @@ const Dashboard = () => {
     ));
   };
 
-  const getAllKeywords = () => {
-    return keywordGroups.flatMap(group => group.keywords);
-  };
 
   const getChangePercentage = (keyword: string) => {
     // Check if we have enough data points
     if (mockTrendData.length < 2) return '0';
     
-    const currentData = mockTrendData[mockTrendData.length - 1] as any;
-    const previousData = mockTrendData[mockTrendData.length - 2] as any;
+    // Now TypeScript knows 'currentData' is TrendDataItem and can be indexed by 'keyword'
+    const currentData = mockTrendData[mockTrendData.length - 1]; 
+    const previousData = mockTrendData[mockTrendData.length - 2];
     
-    const current = currentData[keyword];
-    const previous = previousData[keyword];
+    // Type assertion or check might still be needed if you want to be super strict,
+    // but the index signature handles the implicit 'any' error.
+    // We are sure `currentData[keyword]` and `previousData[keyword]` will be numbers
+    // because `mockTrendData` has number values for its string keys.
+    const current = currentData[keyword] as number; 
+    const previous = previousData[keyword] as number;
     
     // Check if both values exist and are numbers
     if (current === undefined || previous === undefined || previous === 0) {
@@ -108,6 +180,17 @@ const Dashboard = () => {
     }
     
     return ((current - previous) / previous * 100).toFixed(1);
+  };
+
+  // Function to filter geo data based on selected keyword
+  const getFilteredGeoData = () => {
+    if (!selectedHeatmapKeyword) {
+      return []; // Return empty if no keyword is selected
+    }
+    return mockGeoData.map(stateData => ({
+      state_code: stateData.state_code,
+      interest: stateData.interestByKeyword[selectedHeatmapKeyword] ?? 0 // Changed from 40 to 0
+    })).filter(item => item.interest > 0); // Only include states with actual data
   };
 
   return (
@@ -213,10 +296,11 @@ const Dashboard = () => {
 
         {/* Scorecard */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-          {getAllKeywords().map(keyword => {
+          {allKeywords.map(keyword => { // Use allKeywords here
             const change = parseFloat(getChangePercentage(keyword));
             const isPositive = change > 0;
-            const currentValue = (mockTrendData[mockTrendData.length - 1] as any)[keyword] || 0;
+            // Now TypeScript correctly understands that 'keyword' can be used as an index
+            const currentValue = (mockTrendData[mockTrendData.length - 1][keyword] || 0) as number;
             
             return (
               <div key={keyword} className="bg-white rounded-lg shadow-sm p-6">
@@ -248,7 +332,7 @@ const Dashboard = () => {
               <YAxis />
               <Tooltip />
               <Legend />
-              {getAllKeywords().map((keyword, index) => (
+              {allKeywords.map((keyword, index) => ( // Use allKeywords here
                 <Line 
                   key={keyword}
                   type="monotone" 
@@ -270,64 +354,68 @@ const Dashboard = () => {
                 <MapPin className="w-5 h-5 mr-2" />
                 Geographic Interest - US States
               </h2>
-              <div className="relative">
-                {/* Heatmap Grid representing US states */}
-                <div className="grid grid-cols-10 gap-1 max-w-md mx-auto">
-                  {mockGeoData.map((item) => {
-                    const intensity = item.interest / 100;
-                    const backgroundColor = `rgba(59, 130, 246, ${intensity})`;
-                    return (
-                      <div
-                        key={item.state_code}
-                        className="relative group cursor-pointer"
-                        style={{
-                          backgroundColor,
-                          border: '1px solid #e5e7eb',
-                          minHeight: '20px',
-                          borderRadius: '2px'
-                        }}
-                        title={`${item.state}: ${item.interest}%`}
-                      >
-                        <span className="text-xs font-medium text-center block py-1 text-white mix-blend-difference">
-                          {item.state_code}
-                        </span>
-                        {/* Tooltip */}
-                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity z-10 whitespace-nowrap">
-                          {item.state}: {item.interest}%
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                
-                {/* Legend */}
-                <div className="mt-4 flex items-center justify-center space-x-4">
-                  <span className="text-sm text-gray-600">Interest Level:</span>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-4 h-4 bg-blue-100 border border-gray-300"></div>
-                    <span className="text-xs text-gray-500">Low</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-4 h-4 bg-blue-300 border border-gray-300"></div>
-                    <span className="text-xs text-gray-500">Medium</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-4 h-4 bg-blue-600 border border-gray-300"></div>
-                    <span className="text-xs text-gray-500">High</span>
-                  </div>
-                </div>
 
-                {/* Top States List */}
-                <div className="mt-4">
-                  <h3 className="text-sm font-medium text-gray-700 mb-2">Top 5 States</h3>
-                  <div className="space-y-1">
-                    {mockGeoData.slice(0, 5).map((item, index) => (
+              {/* Keyword Selection Bar for Heatmap */}
+              <div className="mb-4">
+                <label htmlFor="heatmap-keyword-select" className="block text-sm font-medium text-gray-700 mb-1">
+                  Select Keyword:
+                </label>
+                <select
+                  id="heatmap-keyword-select"
+                  value={selectedHeatmapKeyword}
+                  onChange={(e) => setSelectedHeatmapKeyword(e.target.value)}
+                  className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+                >
+                  {allKeywords.length > 0 ? ( // Only render options if keywords exist
+                    allKeywords.map(keyword => (
+                      <option key={keyword} value={keyword}>{keyword}</option>
+                    ))
+                  ) : (
+                    <option value="">No keywords available</option> // Fallback if no keywords
+                  )}
+                </select>
+              </div>
+
+              {/* Display current range for selected keyword */}
+              {selectedHeatmapKeyword && getFilteredGeoData().length > 0 && (
+                <div className="mb-4 text-sm text-gray-600">
+                  Interest range for "{selectedHeatmapKeyword}": {Math.min(...getFilteredGeoData().map(d => d.interest))} - {Math.max(...getFilteredGeoData().map(d => d.interest))}
+                </div>
+              )}
+
+              <USHeatmap data={getFilteredGeoData()} />
+
+              {/* Legend - Updated for continuous gradient */}
+              <div className="mt-4 flex flex-col items-center justify-center">
+                <span className="text-sm text-gray-600 mb-2">Interest Level:</span>
+                <div className="w-full max-w-xs h-6 rounded-md"
+                    style={{ background: 'linear-gradient(to right, #cfe3f3, #08306b)' }}>
+                </div>
+                <div className="flex justify-between w-full max-w-xs mt-1">
+                  <span className="text-xs text-gray-500">Low</span>
+                  <span className="text-xs text-gray-500">High</span>
+                </div>
+              </div>
+
+              {/* Top States List - UPDATED */}
+              <div className="mt-4">
+                <h3 className="text-sm font-medium text-gray-700 mb-2">Top 5 States for "{selectedHeatmapKeyword}"</h3>
+                <div className="space-y-1">
+                  {getFilteredGeoData()
+                    .sort((a, b) => b.interest - a.interest) // Sort by interest descending
+                    .slice(0, 5) // Take top 5
+                    .map((item, index) => (
                       <div key={item.state_code} className="flex justify-between items-center text-sm">
-                        <span className="text-gray-700">{index + 1}. {item.state}</span>
-                        <span className="font-medium text-blue-600">{item.interest}%</span>
+                        <span className="text-gray-700">
+                          {index + 1}. {mockGeoData.find(d => d.state_code === item.state_code)?.state || item.state_code}
+                        </span>
+                        <span className="font-medium text-blue-600">{item.interest}</span>
                       </div>
-                    ))}
-                  </div>
+                    ))
+                  }
+                  {getFilteredGeoData().length === 0 && (
+                    <div className="text-sm text-gray-500 italic">No data available for selected keyword</div>
+                  )}
                 </div>
               </div>
             </div>
