@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Plot from 'react-plotly.js';
 import './App.css';
+import YouTubeSection from './components/YouTubeSection';
 
 function App() {
   const [categories, setCategories] = useState({});
@@ -10,6 +11,8 @@ function App() {
   const [trendsData, setTrendsData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [selectedSource, setSelectedSource] = useState('google');
+  const [shouldFetchYouTube, setShouldFetchYouTube] = useState(false);
 
   // Fetch categories on mount
   useEffect(() => {
@@ -29,30 +32,38 @@ function App() {
     fetchCategories();
   }, []);
 
-  const fetchTrendsData = async () => {
-    if (!selectedCategory || !selectedKeyword) return;
+  const handleKeywordSubmit = async () => {
+    if (!selectedKeyword.trim()) return;
     
     setLoading(true);
     setError('');
-    try {
-      const response = await fetch(
-        `http://localhost:8000/trends/${encodeURIComponent(selectedCategory)}/${encodeURIComponent(selectedKeyword)}?timeframe=${timeframe}`
-      );
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to fetch trends data');
+    setShouldFetchYouTube(selectedSource === 'youtube');
+    
+    if (selectedSource === 'google') {
+      try {
+        const response = await fetch(
+          `http://localhost:8000/trends/${encodeURIComponent(selectedCategory)}/${encodeURIComponent(selectedKeyword)}?timeframe=${timeframe}`
+        );
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.detail || 'Failed to fetch trends data');
+        }
+        
+        const data = await response.json();
+        setTrendsData(data);
+      } catch (error) {
+        setError(error instanceof Error ? error.message : 'An error occurred while fetching data');
+        console.error('Error fetching trends data:', error);
       }
-      
-      const data = await response.json();
-      setTrendsData(data);
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'An error occurred while fetching data');
-      console.error('Error fetching trends data:', error);
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
   };
+
+  // Reset YouTube fetch flag when changing sources
+  useEffect(() => {
+    setShouldFetchYouTube(false);
+  }, [selectedSource]);
 
   const renderTimeSeriesChart = () => {
     if (!trendsData?.interest_over_time || !selectedKeyword) return null;
@@ -92,8 +103,9 @@ function App() {
         style={{ width: '100%', height: '400px' }}
         config={{
           displayModeBar: true,
-          scrollZoom: false,
-          modeBarButtonsToRemove: ['lasso2d', 'select2d', 'autoScale2d']
+          modeBarButtonsToRemove: ['lasso2d', 'select2d', 'autoScale2d'],
+          displaylogo: false,
+          responsive: true
         }}
       />
     );
@@ -166,8 +178,9 @@ function App() {
         }}
         config={{ 
           displayModeBar: true,
-          scrollZoom: false,
-          modeBarButtonsToRemove: ['lasso2d', 'select2d', 'autoScale2d']
+          modeBarButtonsToRemove: ['lasso2d', 'select2d', 'autoScale2d'],
+          displaylogo: false,
+          responsive: true
         }}
       />
     );
@@ -184,12 +197,6 @@ function App() {
 
   const handleKeywordChange = (e) => {
     setSelectedKeyword(e.target.value);
-  };
-
-  const handleKeywordSubmit = () => {
-    if (selectedKeyword.trim()) {
-      fetchTrendsData();
-    }
   };
 
   return (
@@ -217,7 +224,7 @@ function App() {
       <div className="py-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="bg-white rounded-lg shadow p-6">
-            <h1 className="text-3xl font-bold text-gray-900 mb-8">CPGTrends Dashboard</h1>
+            <h1 className="text-3xl font-bold text-gray-900 mb-8">CPG Trends Dashboard</h1>
             
             {error && (
               <div className="bg-red-50 text-red-700 p-4 rounded-md mb-6">
@@ -242,54 +249,70 @@ function App() {
                 </select>
               </div>
 
+              {selectedCategory && categories[selectedCategory]?.subcategories && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Example Keywords
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {categories[selectedCategory].subcategories.map((subcategory) => (
+                      <button
+                        key={subcategory}
+                        onClick={() => handleSubcategoryClick(subcategory)}
+                        className={`px-3 py-1 rounded-full text-sm font-medium ${
+                          selectedKeyword === subcategory
+                            ? 'bg-indigo-100 text-indigo-800'
+                            : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                        }`}
+                      >
+                        {subcategory}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Keyword
+                  Custom Keyword
                 </label>
-                <div className="space-y-4">
-                  {selectedCategory && categories[selectedCategory]?.subcategories.length > 0 && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-500 mb-2">
-                        Example Keywords
-                      </label>
-                      <div className="flex flex-wrap gap-2">
-                        {categories[selectedCategory]?.subcategories.map((subcategory) => (
-                          <button
-                            key={subcategory}
-                            onClick={() => handleSubcategoryClick(subcategory)}
-                            className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                              selectedKeyword === subcategory 
-                                ? 'bg-indigo-600 text-white' 
-                                : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100'
-                            } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500`}
-                          >
-                            {subcategory}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {!selectedCategory && (
-                    <div className="text-gray-500 text-sm mb-4">Select a category to see example keywords</div>
-                  )}
+                <input
+                  type="text"
+                  value={selectedKeyword}
+                  onChange={handleKeywordChange}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      handleKeywordSubmit();
+                    }
+                  }}
+                  placeholder="Enter a keyword and press Enter"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                />
+              </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Custom Keyword
-                    </label>
-                    <input
-                      type="text"
-                      value={selectedKeyword}
-                      onChange={handleKeywordChange}
-                      onKeyPress={(e) => {
-                        if (e.key === 'Enter') {
-                          handleKeywordSubmit();
-                        }
-                      }}
-                      placeholder="Enter a keyword and press Enter"
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                    />
-                  </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Data Source</label>
+                <div className="mt-2 flex space-x-4">
+                  <button
+                    onClick={() => setSelectedSource('google')}
+                    className={`px-4 py-2 rounded-md ${
+                      selectedSource === 'google'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    Google Trends
+                  </button>
+                  <button
+                    onClick={() => setSelectedSource('youtube')}
+                    className={`px-4 py-2 rounded-md ${
+                      selectedSource === 'youtube'
+                        ? 'bg-red-600 text-white'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    YouTube
+                  </button>
                 </div>
               </div>
 
@@ -337,15 +360,25 @@ function App() {
               </div>
             ) : (
               <>
-                {selectedKeyword && trendsData && (
-                  <div className="space-y-8">
-                    <div className="bg-white rounded-lg shadow">
-                      {renderTimeSeriesChart()}
-                    </div>
-                    <div className="bg-white rounded-lg shadow">
-                      {renderRegionalMap()}
-                    </div>
-                  </div>
+                {selectedKeyword && (
+                  <>
+                    {selectedSource === 'google' && trendsData && (
+                      <div className="space-y-8">
+                        <div className="bg-white rounded-lg shadow">
+                          {renderTimeSeriesChart()}
+                        </div>
+                        <div className="bg-white rounded-lg shadow">
+                          {renderRegionalMap()}
+                        </div>
+                      </div>
+                    )}
+                    {selectedSource === 'youtube' && (
+                      <YouTubeSection 
+                        keyword={selectedKeyword} 
+                        shouldFetch={shouldFetchYouTube} 
+                      />
+                    )}
+                  </>
                 )}
               </>
             )}

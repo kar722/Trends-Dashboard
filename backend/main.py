@@ -5,6 +5,13 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
 import pandas as pd
 import json
+from googleapiclient.discovery import build
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
+import torch
+import numpy as np
+from langdetect import detect, DetectorFactory
+import os
+from dotenv import load_dotenv
 
 app = FastAPI(title="CPG Trends API")
 
@@ -19,6 +26,32 @@ app.add_middleware(
 
 # Initialize pytrends
 pytrends = TrendReq(hl='en-US', tz=360)
+
+# Load environment variables
+load_dotenv()
+
+# Initialize YouTube API
+YOUTUBE_API_KEY = os.getenv('YOUTUBE_API_KEY')
+if not YOUTUBE_API_KEY:
+    raise ValueError("YouTube API key not found. Please set YOUTUBE_API_KEY in .env file")
+youtube = build('youtube', 'v3', developerKey=YOUTUBE_API_KEY)
+
+# Initialize sentiment model
+model_name = "cardiffnlp/twitter-roberta-base-sentiment"
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+model = AutoModelForSequenceClassification.from_pretrained(model_name)
+
+# Fix seed for consistent language detection
+DetectorFactory.seed = 0
+
+# Helper function for sentiment analysis
+def classify_sentiment(text: str) -> tuple[str, float]:
+    inputs = tokenizer(text, return_tensors="pt", truncation=True)
+    outputs = model(**inputs)
+    scores = outputs.logits.detach().numpy()[0]
+    probs = np.exp(scores) / np.sum(np.exp(scores))  # softmax
+    labels = ["Negative", "Neutral", "Positive"]
+    return labels[np.argmax(probs)], float(np.max(probs))
 
 # Valid timeframes
 VALID_TIMEFRAMES = [
@@ -312,5 +345,155 @@ def compare_trends(
     
     except HTTPException as he:
         raise he
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/youtube/top-videos/{keyword}")
+async def get_top_videos(keyword: str):
+    try:
+        # Search for videos
+        search_response = youtube.search().list(
+            q=f'"{keyword}"',
+            part='snippet',
+            type='video',
+            order='viewCount',
+            maxResults=25,
+            safeSearch='strict'
+        ).execute()
+
+        # Filter for exact phrase match
+        filtered_items = []
+        for item in search_response['items']:
+            title = item['snippet']['title'].lower()
+            description = item['snippet'].get('description', '').lower()
+            if keyword.lower() in title or keyword.lower() in description:
+                filtered_items.append(item)
+
+        # Get video statistics
+        video_ids = [item['id']['videoId'] for item in filtered_items]
+        if not video_ids:
+            return {"videos": []}
+
+        video_response = youtube.videos().list(
+            part='snippet,statistics',
+            id=','.join(video_ids)
+        ).execute()
+
+        # Process and sort videos
+        videos = []
+        for item in video_response['items']:
+            videos.append({
+                "title": item['snippet']['title'],
+                "views": int(item['statistics'].get('viewCount', 0)),
+                "thumbnail": item['snippet']['thumbnails']['default']['url'],
+                "channel": item['snippet']['channelTitle'],
+                "videoId": item['id']
+            })
+
+        # Sort by views and get top 5
+        top_videos = sorted(videos, key=lambda x: x['views'], reverse=True)[:5]
+        return {"videos": top_videos}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/youtube/sentiment/{keyword}")
+async def get_sentiment_analysis(keyword: str):
+    try:
+        # Fetch videos
+        search_response = youtube.search().list(
+            q=f'"{keyword}"',
+            part='snippet',
+            type='video',
+            order='date',
+            maxResults=50,
+            safeSearch='strict'
+        ).execute()
+
+        # Process English titles
+        titles = []
+        for item in search_response['items']:
+            title = item['snippet']['title']
+            if keyword.lower() in title.lower():
+                try:
+                    if detect(title) == 'en' and title not in titles:
+                        titles.append(title)
+                    if len(titles) >= 25:
+                        break
+                except:
+                    continue
+
+        # Analyze sentiment
+        sentiment_counts = {"Negative": 0, "Neutral": 0, "Positive": 0}
+        for title in titles:
+            label, _ = classify_sentiment(title)
+            sentiment_counts[label] += 1
+
+        total = sum(sentiment_counts.values())
+        sentiment_percentages = {
+            k: round((v / total * 100 if total > 0 else 0), 1)
+            for k, v in sentiment_counts.items()
+        }
+
+        return {
+            "sentiment_counts": sentiment_counts,
+            "sentiment_percentages": sentiment_percentages,
+            "total_analyzed": total
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/youtube/trending-tags/{keyword}")
+async def get_trending_tags(keyword: str):
+    try:
+        # Fetch videos
+        search_response = youtube.search().list(
+            q=f'"{keyword}"',
+            part='snippet',
+            type='video',
+            maxResults=50,
+            safeSearch='strict'
+        ).execute()
+
+        # Get video IDs
+        video_ids = []
+        for item in search_response['items']:
+            title = item['snippet']['title']
+            try:
+                if detect(title) == 'en' and keyword.lower() in title.lower():
+                    video_ids.append(item['id']['videoId'])
+                if len(video_ids) >= 25:
+                    break
+            except:
+                continue
+
+        if not video_ids:
+            return {"tags": []}
+
+        # Fetch video details to get tags
+        video_response = youtube.videos().list(
+            part='snippet',
+            id=','.join(video_ids)
+        ).execute()
+
+        # Process tags
+        all_tags = []
+        for video in video_response['items']:
+            tags = video['snippet'].get('tags', [])
+            all_tags.extend(tags)
+
+        # Count and filter tags
+        tag_counts = {}
+        for tag in all_tags:
+            if keyword.lower() not in tag.lower() and len(tag) > 2:
+                tag_counts[tag] = tag_counts.get(tag, 0) + 1
+
+        # Get top 15 tags
+        top_tags = sorted(tag_counts.items(), key=lambda x: x[1], reverse=True)[:15]
+        return {
+            "tags": [{"tag": tag, "count": count} for tag, count in top_tags]
+        }
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) 
