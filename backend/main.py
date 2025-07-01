@@ -55,9 +55,9 @@ def classify_sentiment(text: str) -> tuple[str, float]:
 
 # Valid timeframes
 VALID_TIMEFRAMES = [
-    "today 6-m",
+    "today 1-m",
+    "today 3-m",
     "today 12-m",
-    "today 3-y",
     "today 5-y"
 ]
 

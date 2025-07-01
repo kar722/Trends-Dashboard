@@ -357,9 +357,9 @@ function App() {
                  value={timeframe}
                  onChange={(e) => setTimeframe(e.target.value)}
                >
-                 <option value="today 6-m">Past 6 months</option>
+                 <option value="today 1-m">Past month</option>
+                 <option value="today 3-m">Past 3 months</option>
                  <option value="today 12-m">Past year</option>
-                 <option value="today 3-y">Past 3 years</option>
                  <option value="today 5-y">Past 5 years</option>
                </select>
              </div>
