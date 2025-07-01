@@ -56,7 +56,6 @@ function App() {
 
    setLoading(true);
    setError('');
-   setShouldFetchYouTube(selectedSource === 'youtube');
    setTrendsData(null);
 
 
@@ -79,14 +78,18 @@ function App() {
        setError(error instanceof Error ? error.message : 'An error occurred while fetching data');
        console.error('Error fetching trends data:', error);
      }
+   } else {
+     // For YouTube source, trigger the fetch
+     setShouldFetchYouTube(true);
    }
    setLoading(false);
  };
 
 
+ // Reset shouldFetchYouTube when source changes or keyword changes
  useEffect(() => {
    setShouldFetchYouTube(false);
- }, [selectedSource]);
+ }, [selectedSource, selectedKeyword]);
 
 
  const renderTimeSeriesChart = () => {
@@ -227,6 +230,10 @@ function App() {
 
  const handleKeywordChange = (e) => {
    setSelectedKeyword(e.target.value);
+   // Reset YouTube fetch when keyword changes
+   if (selectedSource === 'youtube') {
+     setShouldFetchYouTube(false);
+   }
  };
 
 

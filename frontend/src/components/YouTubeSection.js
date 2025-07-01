@@ -15,9 +15,10 @@ const YouTubeSection = ({ keyword, shouldFetch }) => {
     sentiment: null,
     tags: null
   });
+  const [lastFetchedKeyword, setLastFetchedKeyword] = useState('');
 
   React.useEffect(() => {
-    if (!keyword || !shouldFetch) return;
+    if (!keyword || !shouldFetch || keyword === lastFetchedKeyword) return;
 
     const fetchYouTubeData = async () => {
       // Reset errors
@@ -65,10 +66,12 @@ const YouTubeSection = ({ keyword, shouldFetch }) => {
       } finally {
         setLoading(prev => ({ ...prev, tags: false }));
       }
+
+      setLastFetchedKeyword(keyword);
     };
 
     fetchYouTubeData();
-  }, [keyword, shouldFetch]);
+  }, [shouldFetch, keyword, lastFetchedKeyword]);
 
   const formatNumber = (num) => {
     if (num >= 1000000) {
