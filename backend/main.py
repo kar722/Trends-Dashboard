@@ -13,12 +13,21 @@ from langdetect import detect, DetectorFactory
 import os
 from dotenv import load_dotenv
 
+# Load environment variables from .env file if it exists
+load_dotenv()
+
 app = FastAPI(title="CPG Trends API")
+
+# Get allowed origins from environment variable or use default
+allowed_origins = [
+    'http://localhost:3000',
+    'https://trends-dashboard-frontend-766707302238.europe-west1.run.app'
+]
 
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -27,14 +36,16 @@ app.add_middleware(
 # Initialize pytrends
 pytrends = TrendReq(hl='en-US', tz=360)
 
-# Load environment variables
-load_dotenv()
-
 # Initialize YouTube API
 YOUTUBE_API_KEY = os.getenv('YOUTUBE_API_KEY')
 if not YOUTUBE_API_KEY:
-    raise ValueError("YouTube API key not found. Please set YOUTUBE_API_KEY in .env file")
-youtube = build('youtube', 'v3', developerKey=YOUTUBE_API_KEY)
+    raise ValueError("YouTube API key not found in environment variables. Please set YOUTUBE_API_KEY.")
+
+try:
+    youtube = build('youtube', 'v3', developerKey=YOUTUBE_API_KEY)
+except Exception as e:
+    print(f"Warning: Failed to initialize YouTube API: {str(e)}")
+    youtube = None
 
 # Initialize sentiment model
 model_name = "cardiffnlp/twitter-roberta-base-sentiment"

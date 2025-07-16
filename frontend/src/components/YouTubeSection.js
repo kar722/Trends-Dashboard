@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Play, TrendingUp, BarChart2 } from 'lucide-react';
+import config from '../config';
 
 const YouTubeSection = ({ keyword, shouldFetch }) => {
   const [topVideos, setTopVideos] = useState([]);
@@ -28,10 +29,16 @@ const YouTubeSection = ({ keyword, shouldFetch }) => {
         tags: null
       });
 
+      // Get authentication headers
+      const headers = await config.getHeaders();
+
       // Fetch top videos
       setLoading(prev => ({ ...prev, videos: true }));
       try {
-        const response = await fetch(`http://localhost:8000/youtube/top-videos/${encodeURIComponent(keyword)}`);
+        const response = await fetch(
+          `${config.apiBaseUrl}/youtube/top-videos/${encodeURIComponent(keyword)}`,
+          { headers }
+        );
         if (!response.ok) throw new Error('Failed to fetch top videos');
         const data = await response.json();
         setTopVideos(data.videos);
@@ -44,7 +51,10 @@ const YouTubeSection = ({ keyword, shouldFetch }) => {
       // Fetch sentiment analysis
       setLoading(prev => ({ ...prev, sentiment: true }));
       try {
-        const response = await fetch(`http://localhost:8000/youtube/sentiment/${encodeURIComponent(keyword)}`);
+        const response = await fetch(
+          `${config.apiBaseUrl}/youtube/sentiment/${encodeURIComponent(keyword)}`,
+          { headers }
+        );
         if (!response.ok) throw new Error('Failed to fetch sentiment data');
         const data = await response.json();
         setSentimentData(data);
@@ -57,7 +67,7 @@ const YouTubeSection = ({ keyword, shouldFetch }) => {
       // Fetch trending tags
       setLoading(prev => ({ ...prev, tags: true }));
       try {
-        const response = await fetch(`http://localhost:8000/youtube/trending-tags/${encodeURIComponent(keyword)}`);
+        const response = await fetch(`${config.apiBaseUrl}/youtube/trending-tags/${encodeURIComponent(keyword)}`);
         if (!response.ok) throw new Error('Failed to fetch trending tags');
         const data = await response.json();
         setTrendingTags(data.tags);

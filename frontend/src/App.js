@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import Plot from 'react-plotly.js';
+import config from './config';
 import './App.css';
 import YouTubeSection from './components/YouTubeSection';
+import SupplyChainInsights from './components/SupplyChainInsights';
 
 
 function App() {
+ const [currentPage, setCurrentPage] = useState('trends'); // 'trends' or 'supply-chain'
  const [categories, setCategories] = useState({});
  const [selectedCategory, setSelectedCategory] = useState('');
  const [selectedKeyword, setSelectedKeyword] = useState('');
@@ -35,7 +38,8 @@ function App() {
  useEffect(() => {
    const fetchCategories = async () => {
      try {
-       const response = await fetch('http://localhost:8000/categories');
+       const headers = await config.getHeaders();
+       const response = await fetch(`${config.apiBaseUrl}/categories`, { headers });
        if (!response.ok) {
          throw new Error('Failed to fetch categories');
        }
@@ -62,7 +66,7 @@ function App() {
    if (selectedSource === 'google') {
      try {
        const response = await fetch(
-         `http://localhost:8000/trends/${encodeURIComponent(selectedCategory)}/${encodeURIComponent(selectedKeyword)}?timeframe=${timeframe}`
+         `${config.apiBaseUrl}/trends/${encodeURIComponent(selectedCategory)}/${encodeURIComponent(selectedKeyword)}?timeframe=${timeframe}`
        );
 
 
@@ -252,21 +256,46 @@ function App() {
              <div className="h-8 w-px bg-gray-200"></div>
              <h1 className="text-2xl font-bold text-gray-900">FeatureBox AI</h1>
            </div>
+           
+           {/* Navigation */}
+           <div className="flex space-x-4">
+             <button
+               onClick={() => setCurrentPage('trends')}
+               className={`px-4 py-2 rounded-md font-medium transition-colors ${
+                 currentPage === 'trends'
+                   ? 'bg-blue-600 text-white'
+                   : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+               }`}
+             >
+               Trends Dashboard
+             </button>
+             <button
+               onClick={() => setCurrentPage('supply-chain')}
+               className={`px-4 py-2 rounded-md font-medium transition-colors ${
+                 currentPage === 'supply-chain'
+                   ? 'bg-blue-600 text-white'
+                   : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+               }`}
+             >
+               Supply Chain Insights
+             </button>
+           </div>
          </div>
        </div>
      </nav>
 
 
      {/* Main content */}
-     <div className="py-8 px-4 sm:px-6 lg:px-8">
-       <div className="max-w-7xl mx-auto">
-         <div className="bg-white rounded-lg shadow p-6">
-           <h1 className="text-3xl font-bold text-gray-900 mb-8">CPG Trends Dashboard</h1>
-           {error && (
-             <div className="bg-red-50 text-red-700 p-4 rounded-md mb-6">
-               {error}
-             </div>
-           )}
+     {currentPage === 'trends' && (
+       <div className="py-8 px-4 sm:px-6 lg:px-8">
+         <div className="max-w-7xl mx-auto">
+           <div className="bg-white rounded-lg shadow p-6">
+             <h1 className="text-3xl font-bold text-gray-900 mb-8">CPG Trends Dashboard</h1>
+             {error && (
+               <div className="bg-red-50 text-red-700 p-4 rounded-md mb-6">
+                 {error}
+               </div>
+             )}
 
 
            <div className="grid grid-cols-1 gap-6 mb-8">
@@ -422,6 +451,12 @@ function App() {
          </div>
        </div>
      </div>
+     )}
+     
+     {/* Supply Chain Insights Page */}
+     {currentPage === 'supply-chain' && (
+       <SupplyChainInsights />
+     )}
    </div>
  );
 }
