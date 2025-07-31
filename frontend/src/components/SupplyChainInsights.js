@@ -1,6 +1,7 @@
 // SupplyChainInsights.js
 import React, { useState } from 'react';
 import Papa from 'papaparse';
+import * as XLSX from 'xlsx';
 import { DocumentTextIcon, ExclamationTriangleIcon, CheckCircleIcon, ArrowTrendingUpIcon, ArrowTrendingDownIcon, EyeIcon } from '@heroicons/react/24/outline';
 
 const TOKENS_PER_ROW = 55;
@@ -19,16 +20,53 @@ const SupplyChainInsights = () => {
 
   const handleFileSelect = (event) => {
     const file = event.target.files[0];
-    if (file && file.type === 'text/csv') {
+    if (file && (file.type === 'text/csv' || file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || file.name.endsWith('.xlsx'))) {
       setSelectedFile(file);
       setError('');
+      
       const reader = new FileReader();
       reader.onload = (e) => {
-        setCsvContent(e.target.result);
+        if (file.type === 'text/csv') {
+          // Handle CSV file as before
+          setCsvContent(e.target.result);
+        } else {
+          // Handle XLSX file
+          try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            
+            // Check if 'forecast' sheet exists
+            if (!workbook.SheetNames.includes('forecast')) {
+              setError('Excel file must contain a sheet named "forecast".');
+              setSelectedFile(null);
+              setCsvContent('');
+              return;
+            }
+            
+            // Extract the 'forecast' sheet
+            const forecastSheet = workbook.Sheets['forecast'];
+            
+            // Convert to CSV format
+            const csvData = XLSX.utils.sheet_to_csv(forecastSheet);
+            setCsvContent(csvData);
+            
+            console.log('✅ Successfully extracted forecast sheet and converted to CSV');
+          } catch (error) {
+            console.error('Error processing XLSX file:', error);
+            setError('Failed to process Excel file. Please ensure it contains a valid "forecast" sheet.');
+            setSelectedFile(null);
+            setCsvContent('');
+          }
+        }
       };
-      reader.readAsText(file);
+      
+      if (file.type === 'text/csv') {
+        reader.readAsText(file);
+      } else {
+        reader.readAsArrayBuffer(file);
+      }
     } else {
-      setError('Please select a valid CSV file.');
+      setError('Please select a valid CSV or Excel (.xlsx) file.');
       setSelectedFile(null);
       setCsvContent('');
     }
@@ -127,24 +165,14 @@ const SupplyChainInsights = () => {
 
 ### GOAL From the **new forecast data** you (the model) just received—*note: this is a **chunked portion** of the full dataset*—surface the **top insights** that help users:
 1. Understand material demand swings (biggest MoM jumps & drops) and their likely drivers.
-2. Spot SKU × Channel combinations with consistent growth or decline trends.
+2. Spot SKU × Channel combinations with consistent growth or decline trends. Use the "hist_june_2025" column to find the percent_change_mom and as a baseline for your AI insights.
 3. Detect unusual patterns in history (e.g., long zero-demand periods followed by spikes).
 4. Explain **why** these trends or patterns likely happened, using statistical or business evidence (e.g., promo_flag, seasonality, historical context).
 5. Decide what to act on now (e.g., "stock up", "watch inventory", "investigate promo impact") without forcing them to debug the model.
 
 ### INFORMATION ACCESS You are provided with a **chunked slice** of the overall dataset:
 ${chunkCsv}
-
-Here is a breakdown of each column in the dataset:
-- sheet: The company that sells the product.
-- item: A unique identifier for the product.
-- model: The model used to generate the forecast values.
-- ds: The date associated with the forecast.
-- forecast: The predicted number of sales for the product on the given date.
-- Columns starting with "hist_": These represent the actual number of sales for the product in previous months. For example, "hist_june_2025" contains the actual sales for June 2025.
-
-Use the "hist_" columns as a general historical baseline for your insights.
-To calculate percent_change_mom, compare the forecast to the most recent "hist_" column.
+- a partial view of the predictions made by the model
 
 *You will see other chunks separately. Treat your response as self-contained, but precise and consistent in format with earlier chunks so we can later combine them.*
 
@@ -158,11 +186,12 @@ To calculate percent_change_mom, compare the forecast to the most recent "hist_"
   - Abrupt structural breaks (mean shift, variance jump).
 * Link each insight to plausible drivers (promo_flag, seasonality, external_signals) when evidence exists; otherwise say "driver unknown".
 * For each insight, include a concise **explanation or root cause** of why the trend or anomaly likely occurred.
+* Highlight where model error (MAPE, etc.) is > threshold (default = 40 %) so planners know to double-check.
 * End with **"Planner Actions"**—concise bullets of recommended next steps.
 
 ### STYLE Use plain English phrases—avoid jargon. Keep numeric values to one decimal unless integers. Limit each insight to ≤ 40 words.`;
 
-await countTokensForPrompt(chunk_prompt);
+        await countTokensForPrompt(chunk_prompt);
         
         let retries = 0;
         let success = false;
@@ -548,7 +577,7 @@ End with a final **Planner Actions** list.`;
             AI Supply Chain Insights
           </h1>
           <p className="text-gray-600">
-            Upload your supply chain forecast data and get AI-powered insights
+            Upload your supply chain forecast data (CSV or Excel with 'forecast' sheet) and get AI-powered insights
           </p>
         </div>
 
@@ -557,12 +586,12 @@ End with a final **Planner Actions** list.`;
           {/* File Upload Section */}
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Upload CSV Forecast File:
+              Upload Forecast File (CSV or Excel):
             </label>
             <div className="flex items-center space-x-4">
               <input
                 type="file"
-                accept=".csv"
+                accept=".csv,.xlsx"
                 onChange={handleFileSelect}
                 className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
               />
